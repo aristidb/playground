@@ -57,18 +57,30 @@ Suc*->LE {suc n} {m} (suc! ◅ xs) = LE◅ {suc n} {m} (Suc*->LE xs)
 Suc*-asym : ∀ {n m} -> Suc* n m -> ¬ (Suc* (suc m) n)
 Suc*-asym {zero} w p = Suc*->LE p
 Suc*-asym {suc n} {zero} w p = Suc*->LE w
-Suc*-asym {suc .m} {suc m} ε (suc! ◅ xs) = {!Suc*-asym {m} {m} ε!}
-Suc*-asym {suc n} {suc m} (suc! ◅ xs) p = {!!}
+Suc*-asym {suc n} {suc m} w p = Suc*-asym (prev* w) (prev* p)
 
-LE->Suc*->LE : ∀ {n m} x -> LE->Suc* {n} {m} (Suc*->LE {n} {m} x) ≡ x
-LE->Suc*->LE {n} {m} x with LE->Suc* {n} {m} (Suc*->LE {n} {m} x)
-LE->Suc*->LE ε | ε = refl
-LE->Suc*->LE (suc! ◅ xs) | ε = {!!}
-LE->Suc*->LE ε | x' ◅ xs = {!!}
-LE->Suc*->LE (x ◅ xs) | x' ◅ xs' = {!!}
+Suc*-uniq : ∀ {n} {m} -> (a b : Suc* n m) -> a ≡ b
+Suc*-uniq ε ε = refl
+Suc*-uniq ε (suc! ◅ xs) = ⊥-elim (Suc*-asym ε xs)
+Suc*-uniq (suc! ◅ xs) ε = ⊥-elim (Suc*-asym ε xs)
+Suc*-uniq (suc! ◅ xs) (suc! ◅ ys) = cong (_◅_ suc!) (Suc*-uniq xs ys)
+
+Suc*->LE->Suc* : ∀ {n m} x -> LE->Suc* {n} {m} (Suc*->LE x) ≡ x
+Suc*->LE->Suc* {n} {m} x = Suc*-uniq (LE->Suc* {n} {m} (Suc*->LE x)) x
+
+LE-uniq : ∀ {n m} -> (a b : LE n m) -> a ≡ b
+LE-uniq {zero} tt tt = refl
+LE-uniq {suc n} {zero} () _
+LE-uniq {suc n} {suc m} a b = LE-uniq {n} {m} a b
+
+LE->Suc*->LE : ∀ {n m} x -> Suc*->LE (LE->Suc* {n} {m} x) ≡ x
+LE->Suc*->LE {n} {m} x = LE-uniq {n} {m} (Suc*->LE (LE->Suc* {n} {m} x)) x
 
 Suc*↔LE : ∀ {n m} -> Suc* n m ↔ LE n m
 Suc*↔LE {n} {m} = record {
                     to = record { _⟨$⟩_ = Suc*->LE; cong = cong _ };
                     from = record { _⟨$⟩_ = LE->Suc* {n} {m}; cong = cong _ };
-                    inverse-of = record { left-inverse-of = {!!}; right-inverse-of = {!!} } }
+                    inverse-of =
+                      record {
+                      left-inverse-of = Suc*->LE->Suc*;
+                      right-inverse-of = LE->Suc*->LE {n} {m} } }
