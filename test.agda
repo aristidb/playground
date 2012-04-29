@@ -15,3 +15,8 @@ range2 a (suc n) = a ∷ range2 a n
 
 range′ : ℕ -> ℕ -> List ℕ
 range′ a b = range2 a (b ∸ a)
+
+diff : ℕ → ℕ → ℕ
+diff zero n = zero
+diff m zero = m
+diff (suc m) (suc n) = diff m n
