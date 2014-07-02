@@ -1,0 +1,8 @@
+nat : type.
+z : nat.
+s : nat -> nat.
+ss : nat -> nat = [n] s (s n).
+
+plus : nat -> nat -> nat -> type.
+plus/z : plus z N N.
+plus/s : plus N M P -> plus (s N) M (s P).
