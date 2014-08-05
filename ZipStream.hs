@@ -9,6 +9,7 @@ import Data.Traversable
 import Test.QuickCheck
 import Test.QuickCheck.Gen
 import Test.QuickCheck.Function
+import Data.Function
 
 data ZipStream a = ZipStream {headZ :: a, tailZ :: ZipStream a}
   deriving (Functor)
@@ -77,8 +78,8 @@ prop_Applicative :: forall a b c. (Eq a, Eq b, Eq c,
                                    CoArbitrary a, CoArbitrary b, CoArbitrary c,
                                    Function a, Function b) =>
                     a -> b -> c -> Property
-prop_Applicative _ _ _ = (prop_Identity :: ZipStream a -> Bool) .&&.
-                         (prop_Composition :: ZipStream (Fun b c) -> ZipStream (Fun a b) -> ZipStream a -> Bool) .&&.
-                         (prop_Homomorphism :: Fun a b -> a -> Bool) .&&.
-                         (prop_Interchange :: ZipStream (Fun a b) -> a -> Bool) .&&.
+prop_Applicative _ _ _ = (prop_Identity :: ZipStream a -> Bool) .&.
+                         (prop_Composition :: ZipStream (Fun b c) -> ZipStream (Fun a b) -> ZipStream a -> Bool) .&.
+                         (prop_Homomorphism :: Fun a b -> a -> Bool) .&.
+                         (prop_Interchange :: ZipStream (Fun a b) -> a -> Bool) .&.
                          (prop_Fmap :: Fun a b -> ZipStream a -> Bool)

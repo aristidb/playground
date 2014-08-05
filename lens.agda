@@ -101,7 +101,7 @@ IsoFromNaive xiso pro = dimap yon hither
         open IsProfunctor pro
 
 IsoToNaive : ∀ {I i o} → IsoProfunctor {I} i o → Iso {I} i o
-IsoToNaive pro = iso (λ {a} → pro {a = a} reviewProfunctor)
-                   (λ {a} → pro {b = a} (forgetProfunctor _) id)
+IsoToNaive pro = iso (λ {a} → {!pro {a = a} reviewProfunctor!})
+                   (λ {a} → {!pro {b = a} (forgetProfunctor _) id!})
                    {!!}
                    {!!}
