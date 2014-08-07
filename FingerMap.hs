@@ -1,10 +1,13 @@
-{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, UndecidableInstances #-}
 module FingerMap where
 
 import Data.FingerTree (FingerTree, Measured(..))
 import qualified Data.FingerTree as FT
 import Data.Monoid
 import Prelude hiding (splitAt, length)
+
+instance (Measured v b) => Measured v (a, b) where
+    measure (_, b) = measure b
 
 data Node a = Elem a | Filler {-# UNPACK #-} !Int
     deriving (Show)
@@ -76,3 +79,14 @@ update i f x =
           FT.EmptyL -> (Nothing, mempty)
           Filler n FT.:< q -> (Nothing, filler (n - 1) <> FM q)
           Elem p FT.:< q -> (Just p, FM q)
+
+data RelAbs = Set {-# UNPACK #-} !Int | Add {-# UNPACK #-} !Int
+    deriving (Show, Eq)
+
+instance Monoid RelAbs where
+    mempty = Add 0
+    mappend _ (Set n) = Set n
+    mappend (Set n) (Add a) = Set (n + a)
+    mappend (Add a) (Add b) = Add (a + b)
+
+-- fingertree of RelAbs
