@@ -4,19 +4,18 @@ module FingerMap where
 import Data.FingerTree (FingerTree, Measured(..))
 import qualified Data.FingerTree as FT
 import Data.Monoid
-import Prelude hiding (splitAt, length)
+import Prelude hiding (lookup, splitAt, length)
 
 {-
 instance (Measured v b) => Measured v (a, b) where
     measure (_, b) = measure b
 -}
 
-data Node a = Elem a | Filler {-# UNPACK #-} !Int
+data Node a = Elem {-# UNPACK #-} !Int a
     deriving (Show)
 
 instance Measured (Sum Int) (Node a) where
-    measure (Elem _) = Sum 1
-    measure (Filler n) = Sum n
+    measure (Elem n _) = Sum n
 
 newtype FingerMap a = FM (FingerTree (Sum Int) (Node a))
     deriving (Show)
@@ -28,36 +27,28 @@ instance Measured (Sum Int) (FingerMap a) where
     measure (FM a) = measure a
 
 singleton :: a -> FingerMap a
-singleton a = FM (FT.singleton (Elem a))
+singleton a = FM (FT.singleton (Elem 1 a))
 {-# INLINE singleton #-}
 
 fromElemList :: [a] -> FingerMap a
-fromElemList xs = FM (FT.fromList (map Elem xs))
+fromElemList xs = FM (FT.fromList (map (Elem 1) xs))
 
 instance Monoid (FingerMap a) where
     mempty = FM FT.empty
-    mappend a@(FM x) b@(FM y) = app (FT.viewr x) (FT.viewl y)
-      where
-        app FT.EmptyR _ = b
-        app _ FT.EmptyL = a
-        app (_ FT.:> Elem _) _ = FM (x <> y)
-        app _ (Elem _ FT.:< _) = FM (x <> y)
-        app (x' FT.:> Filler n) (Filler m FT.:< y') = FM $ x' <> (Filler (n + m) FT.<| y')
-
-filler :: Int -> FingerMap a
-filler 0 = mempty
-filler n = FM $ FT.singleton (Filler n)
+    mappend (FM x) (FM y) = FM (x <> y)
 
 length :: FingerMap a -> Int
 length x = getSum (measure x)
 
-lookup :: FingerMap a -> Int -> Maybe a
-lookup (FM x) i =
-    case FT.viewl $ FT.dropUntil (> Sum i) x of
-      FT.EmptyL -> Nothing
-      Filler _ FT.:< _ -> Nothing
-      Elem a FT.:< _ -> Just a
+lookup :: FingerMap a -> Int -> FingerMap a
+lookup (FM x) i | measure a < Sum i = mempty
+                | otherwise = case FT.viewr a of
+                                FT.EmptyR -> mempty
+                                _ FT.:> e -> FM (e FT.<| FT.dropUntil (> Sum 0) b)
+  where
+    (a, b) = FT.split (> Sum i) x
 
+{-
 splitAt :: Int -> FingerMap a -> (FingerMap a, FingerMap a)
 splitAt i (FM x) =
     case FT.viewl b of
@@ -81,3 +72,4 @@ update i f x =
           FT.EmptyL -> (Nothing, mempty)
           Filler n FT.:< q -> (Nothing, filler (n - 1) <> FM q)
           Elem p FT.:< q -> (Just p, FM q)
+-}
