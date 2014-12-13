@@ -10,10 +10,12 @@ import Data.Monoid
 data ScalarType = TUnit | TString
     deriving (Eq, Show)
 
+-- FIXME
 data Type = Type {
       scalarType :: ScalarType
     , keys :: S.Set Key -- enforces sorting?
     , contextTypes :: M.Map ContextName Type
+    -- TODO: cardinality
     }
     deriving (Eq, Show)
 
@@ -30,6 +32,7 @@ scalar st = Type { scalarType = st, keys = S.singleton S.empty, contextTypes = M
 empty :: Type
 empty = scalar TUnit
 
+-- FIXME, there is nothing list-like without a context, so either fix Value or "list"
 list :: ScalarType -> Type
 list st = Type { scalarType = st, keys = S.empty, contextTypes = M.empty }
 
@@ -38,6 +41,9 @@ record = Type TUnit
 
 embedType :: Type -> M.Map ContextName Type -> Type
 embedType Type{..} cs = Type { scalarType = scalarType, keys = keys, contextTypes = M.union cs contextTypes }
+
+subType :: Type -> ContextName -> Type
+subType (Type st ks cs) c = Type st (S.map (S.delete c) ks) (M.delete c cs)
 
 data ScalarValue = SUnit | SString Text
     deriving (Eq, Show)
@@ -49,7 +55,22 @@ data Value =
 
 validValue :: Value -> Bool
 validValue v = isStrictlyMonotonic (contextList v)
-    where isStrictlyMonotonic xs = and $ zipWith (<) xs (tail xs)
+  where isStrictlyMonotonic xs = and $ zipWith (<) xs (tail xs)
+
+typeCheck :: Type -> Value -> Bool
+typeCheck t v = validType t && validValue v && typeCheck' t v
+  where
+    typeCheck' (Type st _ _) (Scalar sv) =
+        case (st, sv) of
+          (TUnit, SUnit) -> True
+          (TString, SString _) -> True
+          _ -> False
+    typeCheck' (Type _st _ks cs) (WithContext c x xs) =
+        case M.lookup c cs of
+          Just ct -> typeCheck sub x && all (typeCheck ct) (map snd xs)
+          Nothing -> False
+      where sub = subType t c
+  -- TODO: check keys
 
 contextList :: Value -> [ContextName]
 contextList (Scalar _) = []
