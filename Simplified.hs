@@ -7,7 +7,8 @@ module Simplified where
 import qualified Data.Set as S
 import qualified Data.Map as M
 import Data.Monoid
-import Data.List
+import Data.List hiding (splitAt)
+import Prelude hiding (splitAt)
 
 type Value = S.Set Fact
 
@@ -22,6 +23,11 @@ instance Show Fact where
 
 data Scalar = SUnit | SString String | SNumber Double
   deriving (Eq, Ord, Show)
+
+{- TYPES:
+    * Cardinality constraints by context
+    * Scalar type constraints
+-}
 
 scalar :: Scalar -> Value
 scalar s = S.singleton $ Fact M.empty s
@@ -62,5 +68,61 @@ splitCommon v = (common, S.map strip v)
         _ -> Nothing
     strip (Fact cs sv) = Fact (foldl' (\csx k -> M.delete k csx) cs (M.keys common)) sv
 
+splitAt :: String -> Value -> (M.Map (Maybe Value) Value)
+splitAt c fs = M.unionsWith mappend $ map (uncurry M.singleton . extractOne) $ S.toList fs
+  where
+    extractOne :: Fact -> (Maybe Value, Value)
+    extractOne (Fact cs sv) =
+      case M.lookup c cs of
+        Just cv -> (Just cv, S.singleton $ Fact (M.delete c cs) sv)
+        Nothing -> (Nothing, S.singleton $ Fact cs sv)
+
 ds1 :: Value
-ds1 = S.fromList $ map (\(y,m,d,r) -> undefined) undefined
+ds1 = mconcat $ map ctx entries
+  where
+    ctx (y,m,d,r) =
+        embedContext
+            (M.fromList [
+                ("year",number y),
+                ("month",number m),
+                ("day",number d),
+                ("duration",embed "unit" (string "years") $ number 10)
+            ])
+            (number r)
+    entries = [ (2014,1,2,3.92), (2014,2,3,3.55), (2014,3,3,3.55) ]
+
+data Nested = Nested [String] Node
+    deriving (Eq, Ord, Show)
+
+-- not currently encoded in type: leafs should only occur when the list of contexts is empty
+data Node = Branch (M.Map (Maybe Nested) Node) | Leaf (S.Set Scalar)
+    deriving (Eq, Show)
+
+instance Ord Node where
+    Leaf a <= Leaf b = a <= b
+    Branch a <= Branch b = a <= b
+    Leaf _ <= Branch _ = True
+    Branch _ <= Leaf _ = False
+
+toNested :: Value -> Nested
+toNested fs = Nested keys (toNode keys fs)
+  where
+    keys = S.toList . S.unions . map (S.fromList . M.keys . context) . S.toList $ fs
+
+toNode :: [String] -> Value -> Node
+toNode [] fs = Leaf $ S.map scalarValue fs
+toNode (key0:keys') fs = Branch $ M.fromList $ map (\(k, v) -> (fmap toNested k, toNode keys' v)) (M.toList (splitAt key0 fs))
+
+toFlat :: Nested -> Value
+toFlat (Nested k x) = toFlat' k x
+
+toFlat' :: [String] -> Node -> Value
+toFlat' [] (Leaf sv) = S.map (Fact M.empty) sv
+toFlat' (k:ks) (Branch m) = S.unions $ map (uncurry inner) $ M.toList m
+  where
+    inner Nothing v = toFlat' ks v
+    inner (Just kv) v = embed k (toFlat kv) (toFlat' ks v)
+toFlat' _ _ = error "Branch vs leaf error"
+
+rearrange :: Nested -> [String] -> Nested
+rearrange = undefined
