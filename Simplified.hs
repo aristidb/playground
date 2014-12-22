@@ -80,16 +80,18 @@ splitAt c fs = M.unionsWith mappend $ map (uncurry M.singleton . extractOne) $ S
 ds1 :: Value
 ds1 = mconcat $ map ctx entries
   where
-    ctx (y,m,d,r) =
+    ctx (y,m,d,r,dur) =
         embedContext
-            (M.fromList [
+            (M.fromList ([
                 ("year",number y),
                 ("month",number m),
-                ("day",number d),
-                ("duration",embed "unit" (string "years") $ number 10)
-            ])
+                ("day",number d)
+            ] ++ case dur of
+                   Nothing -> []
+                   Just dv -> [("duration",embed "unit" (string "years") $ number dv)]
+            ))
             (number r)
-    entries = [ (2014,1,2,3.92), (2014,2,3,3.55), (2014,3,3,3.55) ]
+    entries = [ (2014,1,2,3.92,Nothing), (2014,2,3,3.55,Nothing), (2014,3,3,3.55,Just 10) ]
 
 data Nested = Nested [String] Node
     deriving (Eq, Ord, Show)
@@ -127,17 +129,32 @@ toFlat' _ _ = error "Branch vs leaf error"
 rearrange :: [String] -> Nested -> Nested
 rearrange ks v = Nested ks (toNode ks (toFlat v))
 
+merge :: Nested -> Nested -> Nested
+merge (Nested k1 m) (Nested k2 n) = Nested ks $ mergeNode m' n'
+  where
+    ks = nub (k1 ++ k2)
+    Nested _ m' = rearrange ks (Nested k1 m)
+    Nested _ n' = rearrange ks (Nested k2 n)
+
+mergeNode :: Node -> Node -> Node
+mergeNode (Leaf a) (Leaf b) = Leaf (a <> b)
+mergeNode (Branch m) (Branch n) = Branch $ M.unionWith mergeNode m n
+mergeNode _ _ = error "Branch vs leaf error"
+
 printNested :: Int -> Nested -> IO ()
 printNested ind (Nested ks m) = printNested' ind ks m
 
 printNested' :: Int -> [String] -> Node -> IO ()
-printNested' ind [] (Leaf svs) = flip mapM_ (S.toList svs) $ \sv -> putStrLn (replicate ind '\t' ++ show sv)
+printNested' ind [] (Leaf svs) = flip mapM_ (S.toList svs) $ \sv -> indented ind (show sv)
 printNested' ind (k:ks) (Branch m) = flip mapM_ (M.toList m) $ \(kv,v) ->
   do
-    putStrLn $ replicate ind '\t' ++ k
+    indented ind k
     case kv of
-      Nothing -> putStrLn "<SKIP>"
+      Nothing -> indented (ind+1) "<SKIP>"
       Just x -> printNested (ind+1) x
-    putStrLn (replicate (ind+1) '\t' ++ "=>")
+    indented (ind+1) "=>"
     printNested' (ind+1) ks v
 printNested' _ _ _ = error "Branch vs leaf error"
+
+indented :: Int -> String -> IO ()
+indented ind str = putStrLn $ replicate ind '\t' ++ str
