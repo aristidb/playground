@@ -124,5 +124,20 @@ toFlat' (k:ks) (Branch m) = S.unions $ map (uncurry inner) $ M.toList m
     inner (Just kv) v = embed k (toFlat kv) (toFlat' ks v)
 toFlat' _ _ = error "Branch vs leaf error"
 
-rearrange :: Nested -> [String] -> Nested
-rearrange = undefined
+rearrange :: [String] -> Nested -> Nested
+rearrange ks v = Nested ks (toNode ks (toFlat v))
+
+printNested :: Int -> Nested -> IO ()
+printNested ind (Nested ks m) = printNested' ind ks m
+
+printNested' :: Int -> [String] -> Node -> IO ()
+printNested' ind [] (Leaf svs) = flip mapM_ (S.toList svs) $ \sv -> putStrLn (replicate ind '\t' ++ show sv)
+printNested' ind (k:ks) (Branch m) = flip mapM_ (M.toList m) $ \(kv,v) ->
+  do
+    putStrLn $ replicate ind '\t' ++ k
+    case kv of
+      Nothing -> putStrLn "<SKIP>"
+      Just x -> printNested (ind+1) x
+    putStrLn (replicate (ind+1) '\t' ++ "=>")
+    printNested' (ind+1) ks v
+printNested' _ _ _ = error "Branch vs leaf error"
