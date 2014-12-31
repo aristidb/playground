@@ -1,6 +1,8 @@
 -- ultimately we want arbitrary (unsorted) orderings, but I want to clarify concepts with simplified types that do not support that
 
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Simplified where
 
@@ -9,20 +11,22 @@ import qualified Data.Map as M
 import Data.Monoid
 import Data.List hiding (splitAt)
 import Prelude hiding (splitAt)
+import qualified Data.Aeson as A
+import GHC.Generics
 
 type Value = S.Set Fact
 
 type Context = M.Map String Value
 
 data Fact = Fact { context :: Context, scalarValue :: Scalar }
-  deriving (Eq, Ord)
+  deriving (Eq, Ord, Generic)
 
 instance Show Fact where
     show (Fact cs v) | M.null cs = show v
                      | otherwise = "Fact (" ++ show cs ++ ") (" ++ show v ++ ")"
 
 data Scalar = SUnit | SString String | SNumber Double
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
 
 {- TYPES:
     * Cardinality constraints by context
@@ -94,11 +98,11 @@ ds1 = mconcat $ map ctx entries
     entries = [ (2014,1,2,3.92,Nothing), (2014,2,3,3.55,Nothing), (2014,3,3,3.55,Just 10) ]
 
 data Nested = Nested [String] Node
-    deriving (Eq, Ord, Show)
+    deriving (Eq, Ord, Show, Generic)
 
 -- not currently encoded in type: leafs should only occur when the list of contexts is empty
 data Node = Branch (M.Map (Maybe Nested) Node) | Leaf (S.Set Scalar)
-    deriving (Eq, Show)
+    deriving (Eq, Show, Generic)
 
 instance Ord Node where
     Leaf a <= Leaf b = a <= b
@@ -160,3 +164,9 @@ printNested' _ _ _ = error "Branch vs leaf error"
 
 indented :: Int -> String -> IO ()
 indented ind str = putStrLn $ replicate ind '\t' ++ str
+
+instance A.ToJSON Scalar
+instance A.ToJSON Node where
+    toJSON (Leaf xs) = A.object [ "Leaf" A..= xs ]
+    toJSON (Branch xs) = A.object [ "Branch" A..= M.toList xs ]
+instance A.ToJSON Nested
