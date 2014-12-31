@@ -126,6 +126,8 @@ toFlat' (k:ks) (Branch m) = S.unions $ map (uncurry inner) $ M.toList m
     inner (Just kv) v = embed k (toFlat kv) (toFlat' ks v)
 toFlat' _ _ = error "Branch vs leaf error"
 
+-- good order may depend on variance
+
 rearrange :: [String] -> Nested -> Nested
 rearrange ks v = Nested ks (toNode ks (toFlat v))
 
