@@ -1,0 +1,67 @@
+W1
+	Montag
+		0.1
+	Dienstag
+		0.2
+	Mittwoch
+		0.3
+	Donnerstag
+		0.4
+	Freitag
+		0.5
+	Samstag
+		0.6
+	Sonntag
+		0.7
+W2
+	Montag
+		1.1
+	Dienstag
+		1.2
+	Mittwoch
+		1.3
+	Donnerstag
+		1.4
+	Freitag
+		1.5
+	Samstag
+		1.6
+	Sonntag
+		1.7
+W3
+	Montag
+		2.1
+	Dienstag
+		2.2
+	Mittwoch
+		2.3
+	Donnerstag
+		2.4
+	Freitag
+		2.5
+	Samstag
+		2.6
+	Sonntag
+		2.7
+W4
+	Montag
+		3.1
+	Dienstag
+		3.2
+	Mittwoch
+		3.3
+	Donnerstag
+		3.4
+	Freitag
+		3.5
+	Samstag
+		3.6
+	Sonntag
+		3.7
+
+W1: 7
+W2: 7
+W3: 7
+W4: 7
+Montag: 4
+*tag: 4
