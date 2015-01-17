@@ -33,6 +33,25 @@ data Scalar = SUnit | SString String | SNumber Double
     * Scalar type constraints
 -}
 
+type Type = Context -> Constraint
+
+data Constraint = Constraint
+  {
+    constraintId :: String
+  , minCount :: Maybe Int
+  , maxCount :: Maybe Int
+  , scalarType :: ScalarType
+  }
+  deriving (Eq, Ord, Show, Generic)
+
+data ScalarType = TUnit | TString | TNumber
+  deriving (Eq, Ord, Show, Generic)
+
+checkType :: Value -> Type -> Bool
+checkType = go M.empty . S.toList
+  where
+    go _ [] = undefined
+
 scalar :: Scalar -> Value
 scalar s = S.singleton $ Fact M.empty s
 
@@ -96,6 +115,19 @@ ds1 = mconcat $ map ctx entries
             ))
             (number r)
     entries = [ (2014,1,2,3.92,Nothing), (2014,2,3,3.55,Nothing), (2014,3,3,3.55,Just 10) ]
+
+{-
+
+Value -> "[" Context* "]" Node
+Context -> Symbol
+Node -> "{" Assoc* "}"
+Node -> Scalar*
+Assoc -> "<" Value ">" Node
+Assoc -> Node
+Scalar -> Number
+Scalar -> QuotedString
+
+-}
 
 data Nested = Nested [String] Node
     deriving (Eq, Ord, Show, Generic)
