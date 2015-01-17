@@ -13,6 +13,7 @@ import Data.List hiding (splitAt)
 import Prelude hiding (splitAt)
 import qualified Data.Aeson as A
 import GHC.Generics
+import Data.Maybe
 
 type Value = S.Set Fact
 
@@ -47,10 +48,12 @@ data Constraint = Constraint
 data ScalarType = TUnit | TString | TNumber
   deriving (Eq, Ord, Show, Generic)
 
+{-
 checkType :: Value -> Type -> Bool
 checkType = go M.empty . S.toList
   where
     go _ [] = undefined
+-}
 
 scalar :: Scalar -> Value
 scalar s = S.singleton $ Fact M.empty s
@@ -178,6 +181,20 @@ mergeNode :: Node -> Node -> Node
 mergeNode (Leaf a) (Leaf b) = Leaf (a <> b)
 mergeNode (Branch m) (Branch n) = Branch $ M.unionWith mergeNode m n
 mergeNode _ _ = error "Branch vs leaf error"
+
+nestedToString :: Nested -> String
+nestedToString (Nested cs node) = "[" ++ intercalate " " (map show cs) ++ "] " ++ nodeToString node
+
+nodeToString :: Node -> String
+nodeToString (Leaf xs) = intercalate " " $ map scalarToString $ S.toList xs
+nodeToString (Branch ms) = "{" ++ intercalate " " (maybeToList x ++ y) ++ "}"
+    where x = nodeToString `fmap` M.lookup Nothing ms
+          y = map (\(a,b) -> "<" ++ nestedToString a ++ "> " ++ nodeToString b) $ M.toList $ M.mapKeysMonotonic fromJust $ M.delete Nothing ms
+
+scalarToString :: Scalar -> String
+scalarToString SUnit = "_"
+scalarToString (SNumber x) = show x
+scalarToString (SString x) = show x
 
 printNested :: Int -> Nested -> IO ()
 printNested ind (Nested ks m) = printNested' ind ks m
